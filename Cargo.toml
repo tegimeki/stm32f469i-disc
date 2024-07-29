@@ -37,6 +37,9 @@ features = ["stm32f469"]
 version = "0.21.0"
 path="../../stm32f4xx-hal"
 
+[features]
+fmc_sdram = []
+
 [profile.release]
 debug = true
 lto = true
