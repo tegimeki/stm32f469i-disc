@@ -27,13 +27,14 @@ cortex-m = "0.7.2"
 cortex-m-rt = "0.7.0"
 panic-probe = { version = "0.2", features = ["print-rtt"] }
 rtt-target = "0.4.0"
+otm8009a = "0.1"
 
 [dependencies.embedded-hal]
 version = "1.0"
 
 [dependencies.stm32f4xx-hal]
 default-features = false
-features = ["stm32f469", "stm32-fmc"]
+features = ["stm32f469", "stm32-fmc", "dsihost"]
 version = "0.21.0"
 path="../../stm32f4xx-hal"
 
@@ -45,6 +46,19 @@ path = "../../stm32-fmc" # NOTE: using branch with support for is42s32400f
 
 [features]
 fmc_sdram = []
+
+# NOTE: default build is release-like for size/speed 
+[profile.dev]
+opt-level = 3
+debug = false
+strip = "none"
+debug-assertions = false
+overflow-checks = false
+lto = false
+panic = 'unwind'
+incremental = false
+codegen-units = 16
+rpath = false
 
 [profile.release]
 debug = true
