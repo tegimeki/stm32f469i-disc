@@ -4,6 +4,8 @@
 
 use panic_probe as _;
 
+use defmt_rtt as _;
+
 use stm32f469i_disc as board;
 
 use crate::board::{hal::pac, hal::prelude::*, led::Leds};

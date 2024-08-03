@@ -14,7 +14,7 @@ use cortex_m::peripheral::Peripherals;
 
 use cortex_m_rt::entry;
 
-use rtt_target::{rprintln, rtt_init_print};
+use defmt_rtt as _;
 
 use stm32_fmc::devices::is42s32400f_6;
 
@@ -83,9 +83,7 @@ fn main() -> ! {
             Sdnras: gpiof.pf11, Sdnwe: gpioc.pc0,
         };
 
-        rtt_init_print!();
-
-        rprintln!("Initializing SDRAM...\r");
+        defmt::info!("Initializing SDRAM...\r");
 
         let mut sdram = p.FMC.sdram(pins, is42s32400f_6::Is42s32400f6 {}, &clocks);
         let len_bytes = 16 * 1024 * 1024;
@@ -93,7 +91,7 @@ fn main() -> ! {
         let ram_ptr: *mut u32 = sdram.init(&mut delay);
         let ram = unsafe { slice::from_raw_parts_mut(ram_ptr, len_words) };
 
-        rprintln!("Testing SDRAM...\r");
+        defmt::info!("Testing SDRAM...\r");
 
         let seed: u32 = 0x8675309D;
         let mut pattern = XorShift32::new(seed);
@@ -103,7 +101,7 @@ fn main() -> ! {
             let val = pattern.next();
 
             if (addr & 0x1ffff) == 0 {
-                rprintln!("Write: {:X} <- {:X}\r", (ram_ptr as usize) + addr, val);
+                defmt::info!("Write: {:X} <- {:X}\r", (ram_ptr as usize) + addr, val);
             }
 
             ram[addr] = val;
@@ -115,12 +113,12 @@ fn main() -> ! {
             let val = pattern.next();
 
             if (addr & 0x1ffff) == 0 {
-                rprintln!("Read:  {:X} -> {:X}\r", (ram_ptr as usize) + addr, val);
+                defmt::info!("Read:  {:X} -> {:X}\r", (ram_ptr as usize) + addr, val);
             }
 
             let res: u32 = ram[addr];
             if res != val {
-                rprintln!(
+                defmt::info!(
                     "Error: {:X} -> {:X} != {:X}\r",
                     (ram_ptr as usize) + addr,
                     val,
@@ -130,7 +128,7 @@ fn main() -> ! {
             }
         }
 
-        rprintln!("Done!\r");
+        defmt::info!("Done!\r");
     }
     loop {}
 }

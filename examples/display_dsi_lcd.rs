@@ -18,7 +18,7 @@ use cortex_m_rt::{entry, exception};
 
 use panic_probe as _;
 
-use rtt_target::{rprintln, rtt_init_print};
+use defmt_rtt as _;
 
 use stm32_fmc::devices::is42s32400f_6;
 
@@ -133,8 +133,7 @@ fn main() -> ! {
         Sdnras: gpiof.pf11, Sdnwe: gpioc.pc0,
     };
 
-    rtt_init_print!();
-    rprintln!("Initializing SDRAM...\r");
+    defmt::info!("Initializing SDRAM...");
 
     let mut sdram = dp.FMC.sdram(pins, is42s32400f_6::Is42s32400f6 {}, &clocks);
     let sdram_size = 16 * 1024 * 1024;
@@ -143,7 +142,7 @@ fn main() -> ! {
     let framebuffer = unsafe { slice::from_raw_parts_mut(ram_ptr, WIDTH * HEIGHT) };
 
     // Reset display
-    rprintln!("Resetting LCD...\r");
+    defmt::info!("Resetting LCD...");
     let mut lcd_reset = gpioh.ph7.into_push_pull_output();
     lcd_reset.set_low();
     delay.delay_ms(20u32);
@@ -151,7 +150,7 @@ fn main() -> ! {
     delay.delay_ms(10u32);
 
     // Initialize LTDC
-    rprintln!("Intializing display controller...\r");
+    defmt::info!("Intializing display controller...");
     let ltdc_freq = 27_429.kHz();
     let mut display = DisplayController::<u32>::new(
         dp.LTDC,
@@ -173,7 +172,7 @@ fn main() -> ! {
         DsiPllConfig::manual(125, 2, 0 /*div1*/, 4)
     };
 
-    rprintln!("Initializing DSI... ");
+    defmt::info!("Initializing DSI... ");
     let dsi_config = DsiConfig {
         mode: DsiMode::Video {
             mode: DsiVideoMode::Burst,
@@ -221,8 +220,8 @@ fn main() -> ! {
     let mut otm8009a = Otm8009A::new();
     let result = otm8009a.init(&mut dsi_host, otm8009a_config, &mut delay);
     match result {
-        Ok(_) => rprintln!("OTM8009A Init: OK\r"),
-        Err(e) => rprintln!("OTM8009A Error: {:?}", e),
+        Ok(_) => defmt::info!("OTM8009A Init: OK"),
+        Err(e) => defmt::info!("OTM8009A Error: {:?}", e),
     }
     otm8009a.enable_te_output(533, &mut dsi_host).unwrap();
 

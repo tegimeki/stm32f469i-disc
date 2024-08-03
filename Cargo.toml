@@ -25,8 +25,10 @@ targets = ["thumbv7em-none-eabihf"]
 [dependencies]
 cortex-m = "0.7.2"
 cortex-m-rt = "0.7.0"
-panic-probe = { version = "0.2", features = ["print-rtt"] }
-rtt-target = "0.4.0"
+defmt = { version = "0.3.4", optional = true }
+defmt-rtt = "0.4.0"
+panic-probe = { version = "0.3.0", features = ["print-defmt"] }
+rtt-target = "0.5.0"
 otm8009a = "0.1"
 
 [dependencies.embedded-hal]
@@ -34,7 +36,7 @@ version = "1.0"
 
 [dependencies.stm32f4xx-hal]
 default-features = false
-features = ["stm32f469", "stm32-fmc", "dsihost"]
+features = ["stm32f469", "stm32-fmc", "dsihost", "defmt"]
 version = "0.21.0"
 path="../../stm32f4xx-hal"
 
@@ -44,18 +46,24 @@ version = "0.3.0"
 features = ["sdram"]
 path = "../../stm32-fmc" # NOTE: using branch with support for is42s32400f
 
+[dev-dependencies]
+defmt = "0.3.4"
+defmt-rtt = "0.4.0"
+
 [features]
-fmc_sdram = []
+fmc_sdram_test = ["defmt"]
+display_dsi_lcd = ["defmt"]
+gpio_hal_blinky = ["defmt"]
 
 # NOTE: default build is release-like for size/speed 
 [profile.dev]
 opt-level = 3
-debug = false
+debug = true
 strip = "none"
 debug-assertions = false
 overflow-checks = false
 lto = false
-panic = 'unwind'
+#panic = 'unwind'
 incremental = false
 codegen-units = 16
 rpath = false
