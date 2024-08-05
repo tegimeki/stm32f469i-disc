@@ -2,7 +2,7 @@
 //!
 //! Run command: cargo embed --release --features="stm32f469,dsihost,log,ltdc,fmc,example-smps,log-rtt,rt,rtc" --example display_dsi_lcd
 
-//#![deny(warnings)]
+#![deny(warnings)]
 #![no_main]
 #![no_std]
 
@@ -11,7 +11,7 @@ extern crate cortex_m_rt as rt;
 
 use stm32f469i_disc as board;
 
-use core::{mem, slice};
+use core::slice;
 
 use cortex_m::peripheral::Peripherals;
 use cortex_m_rt::{entry, exception};
@@ -20,10 +20,9 @@ use panic_probe as _;
 
 use defmt_rtt as _;
 
-use stm32_fmc::devices::is42s32400f_6;
-
 use crate::board::hal::gpio::alt::fmc as alt;
-use crate::board::hal::{fmc::FmcExt, pac, prelude::*};
+use crate::board::hal::{pac, prelude::*};
+use crate::board::sdram::{sdram_pins, Sdram};
 
 use stm32f4xx_hal::ltdc::{DisplayConfig, DisplayController, Layer, PixelFormat};
 
@@ -73,17 +72,6 @@ fn hue2rgb(hue: u32, level: u32) -> u32 {
     rgb.2 | (rgb.1 << 8) | (rgb.0 << 16)
 }
 
-/// Configure pins for the FMC controller
-macro_rules! fmc_pins {
-    ($($alt:ident: $pin:expr,)*) => {
-        (
-            $(
-                alt::$alt::from($pin.internal_pull_up(true))
-            ),*
-        )
-    };
-}
-
 #[entry]
 fn main() -> ! {
     let dp = pac::Peripherals::take().unwrap();
@@ -113,33 +101,16 @@ fn main() -> ! {
     let gpioh = dp.GPIOH.split();
     let gpioi = dp.GPIOI.split();
 
-    #[rustfmt::skip]
-    let pins = fmc_pins! {
-        A0: gpiof.pf0, A1: gpiof.pf1, A2: gpiof.pf2, A3: gpiof.pf3,
-        A4: gpiof.pf4, A5: gpiof.pf5, A6: gpiof.pf12, A7: gpiof.pf13,
-        A8: gpiof.pf14, A9: gpiof.pf15, A10: gpiog.pg0, A11: gpiog.pg1,
-        Ba0: gpiog.pg4, Ba1: gpiog.pg5,
-        D0: gpiod.pd14, D1: gpiod.pd15, D2: gpiod.pd0, D3: gpiod.pd1,
-        D4: gpioe.pe7, D5: gpioe.pe8, D6: gpioe.pe9, D7: gpioe.pe10,
-        D8: gpioe.pe11, D9: gpioe.pe12, D10: gpioe.pe13, D11: gpioe.pe14,
-        D12: gpioe.pe15, D13: gpiod.pd8, D14: gpiod.pd9, D15: gpiod.pd10,
-        D16: gpioh.ph8, D17: gpioh.ph9, D18: gpioh.ph10, D19: gpioh.ph11,
-        D20: gpioh.ph12, D21: gpioh.ph13, D22: gpioh.ph14, D23: gpioh.ph15,
-        D24: gpioi.pi0, D25: gpioi.pi1, D26: gpioi.pi2, D27: gpioi.pi3,
-        D28: gpioi.pi6, D29: gpioi.pi7, D30: gpioi.pi9, D31: gpioi.pi10,
-        Nbl0: gpioe.pe0, Nbl1: gpioe.pe1, Nbl2: gpioi.pi4, Nbl3: gpioi.pi5,
-        Sdcke0: gpioh.ph2, Sdclk: gpiog.pg8,
-        Sdncas: gpiog.pg15, Sdne0: gpioh.ph3,
-        Sdnras: gpiof.pf11, Sdnwe: gpioc.pc0,
-    };
-
     defmt::info!("Initializing SDRAM...");
 
-    let mut sdram = dp.FMC.sdram(pins, is42s32400f_6::Is42s32400f6 {}, &clocks);
-    let sdram_size = 16 * 1024 * 1024;
-    let ram_ptr: *mut u32 = sdram.init(&mut delay);
+    let sdram = Sdram::new(
+        dp.FMC,
+        sdram_pins! {gpioc, gpiod, gpioe, gpiof, gpiog, gpioh, gpioi},
+        &clocks,
+        &mut delay,
+    );
 
-    let framebuffer = unsafe { slice::from_raw_parts_mut(ram_ptr, WIDTH * HEIGHT) };
+    let framebuffer = unsafe { slice::from_raw_parts_mut(sdram.mem, WIDTH * HEIGHT) };
 
     // Reset display
     defmt::info!("Resetting LCD...");
@@ -230,8 +201,7 @@ fn main() -> ! {
     dsi_host.force_rx_low_power(true);
     dsi_host.refresh();
 
-    let words = sdram_size / mem::size_of::<u32>();
-    let fb = unsafe { slice::from_raw_parts_mut(ram_ptr, words) };
+    let fb = unsafe { slice::from_raw_parts_mut(sdram.mem, sdram.words) };
 
     // rolling gradient display
     let mut hue = 0;

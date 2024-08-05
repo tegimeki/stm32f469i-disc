@@ -2,32 +2,20 @@
 #![no_main]
 #![no_std]
 
+use defmt_rtt as _;
 use panic_probe as _;
+
+use core::slice;
 
 use stm32f469i_disc as board;
 
 use crate::board::hal::gpio::alt::fmc as alt;
-use crate::board::hal::{fmc::FmcExt, pac, prelude::*};
-use core::{mem, slice};
+use crate::board::hal::{pac, prelude::*};
+use crate::board::sdram::{sdram_pins, Sdram};
 
 use cortex_m::peripheral::Peripherals;
 
 use cortex_m_rt::entry;
-
-use defmt_rtt as _;
-
-use stm32_fmc::devices::is42s32400f_6;
-
-/// Configure pins for the FMC controller
-macro_rules! fmc_pins {
-    ($($alt:ident: $pin:expr,)*) => {
-        (
-            $(
-                alt::$alt::from($pin.internal_pull_up(true))
-            ),*
-        )
-    };
-}
 
 /// A psuedo-random pattern generator
 struct XorShift32 {
@@ -63,33 +51,14 @@ fn main() -> ! {
         let gpioh = p.GPIOH.split();
         let gpioi = p.GPIOI.split();
 
-        #[rustfmt::skip]
-        let pins = fmc_pins! {
-            A0: gpiof.pf0, A1: gpiof.pf1, A2: gpiof.pf2, A3: gpiof.pf3,
-            A4: gpiof.pf4, A5: gpiof.pf5, A6: gpiof.pf12, A7: gpiof.pf13,
-            A8: gpiof.pf14, A9: gpiof.pf15, A10: gpiog.pg0, A11: gpiog.pg1,
-            Ba0: gpiog.pg4, Ba1: gpiog.pg5,
-            D0: gpiod.pd14, D1: gpiod.pd15, D2: gpiod.pd0, D3: gpiod.pd1,
-            D4: gpioe.pe7, D5: gpioe.pe8, D6: gpioe.pe9, D7: gpioe.pe10,
-            D8: gpioe.pe11, D9: gpioe.pe12, D10: gpioe.pe13, D11: gpioe.pe14,
-            D12: gpioe.pe15, D13: gpiod.pd8, D14: gpiod.pd9, D15: gpiod.pd10,
-            D16: gpioh.ph8, D17: gpioh.ph9, D18: gpioh.ph10, D19: gpioh.ph11,
-            D20: gpioh.ph12, D21: gpioh.ph13, D22: gpioh.ph14, D23: gpioh.ph15,
-            D24: gpioi.pi0, D25: gpioi.pi1, D26: gpioi.pi2, D27: gpioi.pi3,
-            D28: gpioi.pi6, D29: gpioi.pi7, D30: gpioi.pi9, D31: gpioi.pi10,
-            Nbl0: gpioe.pe0, Nbl1: gpioe.pe1, Nbl2: gpioi.pi4, Nbl3: gpioi.pi5,
-            Sdcke0: gpioh.ph2, Sdclk: gpiog.pg8,
-            Sdncas: gpiog.pg15, Sdne0: gpioh.ph3,
-            Sdnras: gpiof.pf11, Sdnwe: gpioc.pc0,
-        };
-
         defmt::info!("Initializing SDRAM...\r");
-
-        let mut sdram = p.FMC.sdram(pins, is42s32400f_6::Is42s32400f6 {}, &clocks);
-        let len_bytes = 16 * 1024 * 1024;
-        let len_words = len_bytes / mem::size_of::<u32>();
-        let ram_ptr: *mut u32 = sdram.init(&mut delay);
-        let ram = unsafe { slice::from_raw_parts_mut(ram_ptr, len_words) };
+        let sdram = Sdram::new(
+            p.FMC,
+            sdram_pins! {gpioc, gpiod, gpioe, gpiof, gpiog, gpioh, gpioi},
+            &clocks,
+            &mut delay,
+        );
+        let ram = unsafe { slice::from_raw_parts_mut(sdram.mem, sdram.words) };
 
         defmt::info!("Testing SDRAM...\r");
 
@@ -97,32 +66,31 @@ fn main() -> ! {
         let mut pattern = XorShift32::new(seed);
 
         // write our pattern
-        for addr in 0..len_words {
+        for (addr, res) in ram.iter_mut().enumerate().take(sdram.words) {
             let val = pattern.next();
 
             if (addr & 0x1ffff) == 0 {
-                defmt::info!("Write: {:X} <- {:X}\r", (ram_ptr as usize) + addr, val);
+                defmt::info!("Write: {:X} <- {:X}\r", (sdram.mem as usize) + addr, val);
             }
 
-            ram[addr] = val;
+            *res = val;
         }
 
         // read back pattern
         pattern = XorShift32::new(seed);
-        for addr in 0..len_words {
+        for (addr, res) in ram.iter_mut().enumerate().take(sdram.words) {
             let val = pattern.next();
 
             if (addr & 0x1ffff) == 0 {
-                defmt::info!("Read:  {:X} -> {:X}\r", (ram_ptr as usize) + addr, val);
+                defmt::info!("Read:  {:X} -> {:X}\r", (sdram.mem as usize) + addr, val);
             }
 
-            let res: u32 = ram[addr];
-            if res != val {
+            if *res != val {
                 defmt::info!(
                     "Error: {:X} -> {:X} != {:X}\r",
-                    (ram_ptr as usize) + addr,
+                    (sdram.mem as usize) + addr,
                     val,
-                    res
+                    *res
                 );
                 break;
             }
@@ -130,5 +98,7 @@ fn main() -> ! {
 
         defmt::info!("Done!\r");
     }
-    loop {}
+    loop {
+        continue;
+    }
 }

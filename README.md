@@ -6,8 +6,8 @@ kit.  Programming is provided by `probe-rs`; see `.cargo/config.toml`.
 Peripheral Support
 ------------------
 - [x] Green, Orange, Red, Blue user LEDs
-  [x] 16MB SDRAM on FMC interface (currently using local branch of stm32f4xx-hal and stm32-fmc until underlying features are merged upstream)
-- [x] OTM8009A LCD (requires FMC SDRAM, DSI host, LTDC driver in stm32f4xx-hal - porting in progress using some existing code in pending pull requests)
+- [x] 16MB SDRAM on FMC interface
+- [x] OTM8009A LCD (requires yet-to-be-released stm32f4xx-hal > 0.21.0 - using HEAD of that repo in the meantime)
 - [ ] FT6206 touch controller (i2c)
 - [ ] Other standard peripherals (my initial goal is to get the display up)
 
