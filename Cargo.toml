@@ -14,8 +14,8 @@ keywords = [
 ]
 license = "0BSD"
 name = "stm32f469i-disc"
-repository = "https://gitlab.com/mfairman/stm32f469i-disc"
-version = "0.1.0"
+repository = "https://github.com/tegimeki/stm32f469i-disc"
+version = "0.2.0"
 readme = "README.md"
 
 [package.metadata.docs.rs]
@@ -39,7 +39,9 @@ version = "1.0"
 default-features = false
 features = ["stm32f469", "stm32-fmc", "dsihost", "defmt"]
 version = "0.21.0"
-path="../../stm32f4xx-hal" # pending next crate release
+git = "https://github.com/tegimeki/stm32f4xx-hal"
+branch = "prerelease/0.22.0"
+#path="../../stm32f4xx-hal" # pending next crate release
 
 [dev-dependencies]
 defmt = "0.3.4"
