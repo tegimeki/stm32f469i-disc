@@ -1,6 +1,6 @@
 //! This example initializes the STM32F469I-DISCO LCD and draws to it.
 //!
-//! Run command: cargo embed --release --features="stm32f469,dsihost,log,ltdc,fmc,example-smps,log-rtt,rt,rtc" --example display_dsi_lcd
+//! Run command: cargo run --release --example display_dsi_lcd
 
 #![deny(warnings)]
 #![no_main]

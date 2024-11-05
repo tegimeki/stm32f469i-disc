@@ -7,7 +7,7 @@ Peripheral Support
 ------------------
 - [x] Green, Orange, Red, Blue user LEDs
 - [x] 16MB SDRAM on FMC interface
-- [x] OTM8009A LCD (requires yet-to-be-released stm32f4xx-hal > 0.21.0 - using HEAD of that repo in the meantime)
+- [x] OTM8009A LCD
 - [ ] FT6206 touch controller (i2c)
 - [ ] Other standard peripherals (my initial goal is to get the display up)
 

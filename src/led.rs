@@ -4,7 +4,7 @@ use crate::hal::gpio::{
     gpiod::{self, PD4, PD5},
     gpiog::{self, PG6},
     gpiok::{self, PK3},
-    EPin,
+    ErasedPin,
 };
 
 use crate::hal::gpio::{Output, PushPull};
@@ -95,7 +95,7 @@ impl core::ops::IndexMut<LedColor> for Leds {
 
 /// Individual LED
 pub struct Led {
-    pin: EPin<Output<PushPull>>,
+    pin: ErasedPin<Output<PushPull>>,
 }
 
 macro_rules! ctor {
