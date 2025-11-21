@@ -10,7 +10,7 @@ use core::slice;
 use stm32f469i_disc as board;
 
 use crate::board::hal::gpio::alt::fmc as alt;
-use crate::board::hal::{pac, prelude::*};
+use crate::board::hal::{pac, prelude::*, rcc};
 use crate::board::sdram::{sdram_pins, Sdram};
 
 use cortex_m::peripheral::Peripherals;
@@ -37,19 +37,23 @@ impl XorShift32 {
 
 #[entry]
 fn main() -> ! {
-    if let (Some(p), Some(cp)) = (pac::Peripherals::take(), Peripherals::take()) {
+    if let (Some(p), Some(cp)) = (pac::Peripherals::take(), Peripherals::take())
+    {
         let rcc = p.RCC.constrain();
 
-        let clocks = rcc.cfgr.sysclk(180.MHz()).freeze();
+        let mut rcc = rcc.freeze(rcc::Config::hse(8.MHz()).sysclk(180.MHz()));
+
+        let clocks = rcc.clocks;
+
         let mut delay = cp.SYST.delay(&clocks);
 
-        let gpioc = p.GPIOC.split();
-        let gpiod = p.GPIOD.split();
-        let gpioe = p.GPIOE.split();
-        let gpiof = p.GPIOF.split();
-        let gpiog = p.GPIOG.split();
-        let gpioh = p.GPIOH.split();
-        let gpioi = p.GPIOI.split();
+        let gpioc = p.GPIOC.split(&mut rcc);
+        let gpiod = p.GPIOD.split(&mut rcc);
+        let gpioe = p.GPIOE.split(&mut rcc);
+        let gpiof = p.GPIOF.split(&mut rcc);
+        let gpiog = p.GPIOG.split(&mut rcc);
+        let gpioh = p.GPIOH.split(&mut rcc);
+        let gpioi = p.GPIOI.split(&mut rcc);
 
         defmt::info!("Initializing SDRAM...\r");
         let sdram = Sdram::new(
@@ -70,7 +74,11 @@ fn main() -> ! {
             let val = pattern.next();
 
             if (addr & 0x1ffff) == 0 {
-                defmt::info!("Write: {:X} <- {:X}\r", (sdram.mem as usize) + addr, val);
+                defmt::info!(
+                    "Write: {:X} <- {:X}\r",
+                    (sdram.mem as usize) + addr,
+                    val
+                );
             }
 
             *res = val;
@@ -82,7 +90,11 @@ fn main() -> ! {
             let val = pattern.next();
 
             if (addr & 0x1ffff) == 0 {
-                defmt::info!("Read:  {:X} -> {:X}\r", (sdram.mem as usize) + addr, val);
+                defmt::info!(
+                    "Read:  {:X} -> {:X}\r",
+                    (sdram.mem as usize) + addr,
+                    val
+                );
             }
 
             if *res != val {

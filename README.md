@@ -1,7 +1,6 @@
 stm32f469i-disc
 ===============
-_stm32f469i-disc_ provides a board support package for the STM32F469I-DISCOVERY
-kit.  Programming is provided by `probe-rs`; see `.cargo/config.toml`.
+Board support package for the STM32F469I-DISCOVERY kit.
 
 Peripheral Support
 ------------------
@@ -9,7 +8,7 @@ Peripheral Support
 - [x] 16MB SDRAM on FMC interface
 - [x] OTM8009A LCD
 - [ ] FT6206 touch controller (i2c)
-- [ ] Other standard peripherals (my initial goal is to get the display up)
+- [ ] Other on-board peripherals
 
 Credits
 -------

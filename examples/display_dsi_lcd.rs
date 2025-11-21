@@ -21,16 +21,19 @@ use panic_probe as _;
 use defmt_rtt as _;
 
 use crate::board::hal::gpio::alt::fmc as alt;
-use crate::board::hal::{pac, prelude::*};
+use crate::board::hal::{pac, prelude::*, rcc};
 use crate::board::sdram::{sdram_pins, Sdram};
 
-use stm32f4xx_hal::ltdc::{DisplayConfig, DisplayController, Layer, PixelFormat};
+use stm32f4xx_hal::ltdc::{
+    DisplayConfig, DisplayController, Layer, PixelFormat,
+};
 
 use otm8009a::{Otm8009A, Otm8009AConfig};
 
 use stm32f4xx_hal::dsi::{
-    ColorCoding, DsiChannel, DsiCmdModeTransmissionKind, DsiConfig, DsiHost, DsiInterrupts,
-    DsiMode, DsiPhyTimers, DsiPllConfig, DsiVideoMode, LaneCount,
+    ColorCoding, DsiChannel, DsiCmdModeTransmissionKind, DsiConfig, DsiHost,
+    DsiInterrupts, DsiMode, DsiPhyTimers, DsiPllConfig, DsiVideoMode,
+    LaneCount,
 };
 
 pub const WIDTH: usize = 480;
@@ -80,26 +83,26 @@ fn main() -> ! {
     let rcc = dp.RCC.constrain();
 
     let hse_freq = 8.MHz();
-    let clocks = rcc
-        .cfgr
-        .use_hse(hse_freq)
-        // NOTE: possible PLL setup issue, requiring we limit AB2 clock
-        .pclk2(32.MHz())
-        .sysclk(180.MHz())
-        .freeze();
+    let mut rcc = rcc.freeze(
+        rcc::Config::hse(hse_freq)
+            // NOTE: possible PLL setup issue, requiring we limit AB2 clock
+            .pclk2(32.MHz())
+            .sysclk(180.MHz()),
+    );
+    let clocks = rcc.clocks;
     let mut delay = cp.SYST.delay(&clocks);
 
     cp.SCB.invalidate_icache();
     cp.SCB.enable_icache();
 
-    let gpioa = dp.GPIOA.split();
-    let gpioc = dp.GPIOC.split();
-    let gpiod = dp.GPIOD.split();
-    let gpioe = dp.GPIOE.split();
-    let gpiof = dp.GPIOF.split();
-    let gpiog = dp.GPIOG.split();
-    let gpioh = dp.GPIOH.split();
-    let gpioi = dp.GPIOI.split();
+    let gpioa = dp.GPIOA.split(&mut rcc);
+    let gpioc = dp.GPIOC.split(&mut rcc);
+    let gpiod = dp.GPIOD.split(&mut rcc);
+    let gpioe = dp.GPIOE.split(&mut rcc);
+    let gpiof = dp.GPIOF.split(&mut rcc);
+    let gpiog = dp.GPIOG.split(&mut rcc);
+    let gpioh = dp.GPIOH.split(&mut rcc);
+    let gpioi = dp.GPIOI.split(&mut rcc);
 
     defmt::info!("Initializing SDRAM...");
 
@@ -110,7 +113,8 @@ fn main() -> ! {
         &mut delay,
     );
 
-    let framebuffer = unsafe { slice::from_raw_parts_mut(sdram.mem, WIDTH * HEIGHT) };
+    let framebuffer =
+        unsafe { slice::from_raw_parts_mut(sdram.mem, WIDTH * HEIGHT) };
 
     // Reset display
     defmt::info!("Resetting LCD...");
@@ -164,7 +168,7 @@ fn main() -> ! {
         DISPLAY_CONFIGURATION,
         dsi_config,
         dp.DSI,
-        &clocks,
+        &mut rcc,
     )
     .unwrap();
 
@@ -177,7 +181,9 @@ fn main() -> ! {
         stop_wait_time: 10,
     });
 
-    dsi_host.set_command_mode_transmission_kind(DsiCmdModeTransmissionKind::AllInLowPower);
+    dsi_host.set_command_mode_transmission_kind(
+        DsiCmdModeTransmissionKind::AllInLowPower,
+    );
     dsi_host.start();
     dsi_host.enable_bus_turn_around(); // Must be before read attempts
 
@@ -197,7 +203,9 @@ fn main() -> ! {
     otm8009a.enable_te_output(533, &mut dsi_host).unwrap();
 
     // Not sure if this is needed
-    dsi_host.set_command_mode_transmission_kind(DsiCmdModeTransmissionKind::AllInHighSpeed);
+    dsi_host.set_command_mode_transmission_kind(
+        DsiCmdModeTransmissionKind::AllInHighSpeed,
+    );
     dsi_host.force_rx_low_power(true);
     dsi_host.refresh();
 

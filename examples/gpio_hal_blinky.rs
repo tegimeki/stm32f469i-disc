@@ -8,7 +8,10 @@ use defmt_rtt as _;
 
 use stm32f469i_disc as board;
 
-use crate::board::{hal::pac, hal::prelude::*, led::Leds};
+use crate::board::{
+    hal::{pac, prelude::*, rcc},
+    led::Leds,
+};
 
 use cortex_m::peripheral::Peripherals;
 
@@ -16,14 +19,17 @@ use cortex_m_rt::entry;
 
 #[entry]
 fn main() -> ! {
-    if let (Some(p), Some(cp)) = (pac::Peripherals::take(), Peripherals::take()) {
-        let gpiod = p.GPIOD.split();
-        let gpiog = p.GPIOG.split();
-        let gpiok = p.GPIOK.split();
-
+    if let (Some(p), Some(cp)) = (pac::Peripherals::take(), Peripherals::take())
+    {
         let rcc = p.RCC.constrain();
 
-        let clocks = rcc.cfgr.sysclk(180.MHz()).freeze();
+        let mut rcc = rcc.freeze(rcc::Config::hse(8.MHz()).sysclk(180.MHz()));
+
+        let clocks = rcc.clocks;
+
+        let gpiod = p.GPIOD.split(&mut rcc);
+        let gpiog = p.GPIOG.split(&mut rcc);
+        let gpiok = p.GPIOK.split(&mut rcc);
 
         let mut delay = cp.SYST.delay(&clocks);
         let pause = 200_u32;
